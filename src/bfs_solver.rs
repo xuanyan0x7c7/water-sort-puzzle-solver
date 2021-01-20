@@ -1,19 +1,12 @@
+use crate::solver::{all_same, SolutionStep, Solver, Tube, TubeStats};
 use std::collections::{HashMap, VecDeque};
 
-pub type Tube = Vec<u8>;
-
-struct TubeStats {
-    empty: bool,
-    simple: bool,
-    finished: bool,
-}
-
 struct State {
-    tubes: Vec<Tube>,
-    depth: usize,
-    from: usize,
-    to: usize,
-    amount: usize,
+    pub tubes: Vec<Tube>,
+    pub depth: usize,
+    pub from: usize,
+    pub to: usize,
+    pub amount: usize,
 }
 
 #[derive(Clone)]
@@ -25,7 +18,7 @@ struct Step {
     transform: Vec<usize>,
 }
 
-pub struct Solver {
+pub struct BFSSolver {
     height: usize,
     colors: usize,
     tubes: usize,
@@ -34,27 +27,9 @@ pub struct Solver {
     queue: VecDeque<State>,
 }
 
-pub struct SolutionStep {
-    pub from: usize,
-    pub to: usize,
-}
-
-fn all_same(tube: &Tube) -> bool {
-    if tube.is_empty() {
-        return true;
-    }
-    let first = tube[0];
-    for i in 1..tube.len() {
-        if tube[i] != first {
-            return false;
-        }
-    }
-    true
-}
-
-impl Solver {
-    pub fn new(height: usize, colors: usize, initial_tubes: &Vec<Tube>) -> Solver {
-        Solver {
+impl Solver for BFSSolver {
+    fn new(height: usize, colors: usize, initial_tubes: &Vec<Tube>) -> Self {
+        Self {
             height: height,
             colors: colors,
             tubes: initial_tubes.len(),
@@ -64,7 +39,69 @@ impl Solver {
         }
     }
 
-    pub fn is_solved(&self, state: &Vec<Tube>) -> bool {
+    fn search(&mut self) -> bool {
+        self.queue.push_back(State {
+            tubes: self.initial_tubes.clone(),
+            depth: 0,
+            from: usize::MAX,
+            to: usize::MAX,
+            amount: 0,
+        });
+        while !self.queue.is_empty() {
+            let state = self.queue.pop_front().unwrap();
+            if self.inner_search(&state) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn get_solution(&self) -> Vec<SolutionStep> {
+        let mut state = vec![vec![]; self.tubes - self.colors];
+        for i in 0..self.colors {
+            state.push(vec![i as u8; self.height]);
+        }
+        let mut steps = vec![];
+        loop {
+            let step = self.states.get(&state).unwrap();
+            steps.push(step.clone());
+            if step.depth == 0 {
+                break;
+            }
+            let mut inverse_transform = vec![0usize; self.tubes];
+            for (i, x) in step.transform.iter().enumerate() {
+                inverse_transform[*x] = i;
+            }
+            state = (0..self.tubes)
+                .map(|index| state[inverse_transform[index]].clone())
+                .collect();
+            let color = *state[step.to].last().unwrap();
+            let l1 = state[step.from].len();
+            let l2 = state[step.to].len();
+            state[step.from].resize(l1 + step.amount, color);
+            state[step.to].resize(l2 - step.amount, color);
+        }
+        steps.reverse();
+
+        let mut solution = vec![];
+        let mut transform: Vec<usize> = (0..self.tubes).collect();
+        for (index, step) in steps.iter().enumerate() {
+            if index > 0 {
+                solution.push(SolutionStep {
+                    from: transform[step.from],
+                    to: transform[step.to],
+                });
+            }
+            transform = (0..self.tubes)
+                .map(|index| transform[step.transform[index]])
+                .collect();
+        }
+        solution
+    }
+}
+
+impl BFSSolver {
+    fn is_solved(&self, state: &Vec<Tube>) -> bool {
         for tube in state {
             let length = tube.len();
             if length != 0 && length != self.height {
@@ -80,23 +117,6 @@ impl Solver {
             }
         }
         true
-    }
-
-    pub fn search(&mut self) -> bool {
-        self.queue.push_back(State {
-            tubes: self.initial_tubes.clone(),
-            depth: 0,
-            from: usize::MAX,
-            to: usize::MAX,
-            amount: 0,
-        });
-        while !self.queue.is_empty() {
-            let state = self.queue.pop_front().unwrap();
-            if self.inner_search(&state) {
-                return true;
-            }
-        }
-        false
     }
 
     fn inner_search(&mut self, state: &State) -> bool {
@@ -191,7 +211,7 @@ impl Solver {
                     });
                 } else if *sorted_tubes[i].last().unwrap() == *sorted_tubes[j].last().unwrap() {
                     let color = *sorted_tubes[i].last().unwrap();
-                    let mut indexes: Vec<(usize, usize)> = vec![];
+                    let mut indexes = vec![];
                     if sorted_tubes[j].len() < self.height {
                         indexes.push((i, j));
                     }
@@ -225,48 +245,5 @@ impl Solver {
             }
         }
         false
-    }
-
-    pub fn get_solution(&self) -> Option<Vec<SolutionStep>> {
-        let mut state: Vec<Tube> = vec![vec![]; self.tubes - self.colors];
-        for i in 0..self.colors {
-            state.push(vec![i as u8; self.height]);
-        }
-        let mut steps: Vec<Step> = vec![];
-        loop {
-            let step = self.states.get(&state).unwrap();
-            steps.push(step.clone());
-            if step.depth == 0 {
-                break;
-            }
-            let mut inverse_transform = vec![0usize; self.tubes];
-            for (i, x) in step.transform.iter().enumerate() {
-                inverse_transform[*x] = i;
-            }
-            state = (0..self.tubes)
-                .map(|index| state[inverse_transform[index]].clone())
-                .collect();
-            let color = *state[step.to].last().unwrap();
-            let l1 = state[step.from].len();
-            let l2 = state[step.to].len();
-            state[step.from].resize(l1 + step.amount, color);
-            state[step.to].resize(l2 - step.amount, color);
-        }
-        steps.reverse();
-
-        let mut solution: Vec<SolutionStep> = vec![];
-        let mut transform: Vec<usize> = (0..self.tubes).collect();
-        for (index, step) in steps.iter().enumerate() {
-            if index > 0 {
-                solution.push(SolutionStep {
-                    from: transform[step.from],
-                    to: transform[step.to],
-                });
-            }
-            transform = (0..self.tubes)
-                .map(|index| transform[step.transform[index]])
-                .collect();
-        }
-        Some(solution)
     }
 }
