@@ -1,18 +1,16 @@
 use crate::solver::{all_same, SolutionStep, Solver, Tube, TubeStats};
 use std::collections::HashSet;
 
-pub struct State {
-    pub tubes: Vec<Tube>,
-    pub from: usize,
-    pub to: usize,
-    pub amount: usize,
+struct State {
+    tubes: Vec<Tube>,
+    from: usize,
+    to: usize,
 }
 
 #[derive(Clone)]
 struct Step {
     from: usize,
     to: usize,
-    amount: usize,
     transform: Vec<usize>,
 }
 
@@ -36,15 +34,11 @@ impl Solver for DFSSolver {
     }
 
     fn search(&mut self) -> bool {
-        self.inner_search(
-            &State {
-                tubes: self.initial_tubes.clone(),
-                from: usize::MAX,
-                to: usize::MAX,
-                amount: 0,
-            },
-            0,
-        )
+        self.inner_search(&State {
+            tubes: self.initial_tubes.clone(),
+            from: usize::MAX,
+            to: usize::MAX,
+        })
     }
 
     fn get_solution(&self) -> Vec<SolutionStep> {
@@ -84,7 +78,7 @@ impl DFSSolver {
         true
     }
 
-    fn inner_search(&mut self, state: &State, depth: usize) -> bool {
+    fn inner_search(&mut self, state: &State) -> bool {
         let mut transform: Vec<usize> = (0..self.tubes).collect();
         transform.sort_unstable_by_key(|index| &state.tubes[*index]);
         let sorted_tubes: Vec<Tube> = transform
@@ -98,7 +92,6 @@ impl DFSSolver {
         self.stack.push(Step {
             from: state.from,
             to: state.to,
-            amount: state.amount,
             transform: transform,
         });
         if self.is_solved(&sorted_tubes) {
@@ -120,25 +113,18 @@ impl DFSSolver {
                 continue;
             }
             for j in (i + 1)..self.tubes {
-                if tube_stats[j].simple
-                    && sorted_tubes[i][0] == sorted_tubes[j][0]
-                    && (depth > 0 || sorted_tubes[i].len() + sorted_tubes[j].len() == self.height)
-                {
+                if tube_stats[j].simple && sorted_tubes[i][0] == sorted_tubes[j][0] {
                     let mut tubes = sorted_tubes.clone();
                     tubes[i].clear();
                     tubes[j].resize(
                         sorted_tubes[i].len() + sorted_tubes[j].len(),
                         sorted_tubes[j][0],
                     );
-                    if self.inner_search(
-                        &State {
-                            tubes: tubes,
-                            from: i,
-                            to: j,
-                            amount: sorted_tubes[i].len(),
-                        },
-                        depth + 1,
-                    ) {
+                    if self.inner_search(&State {
+                        tubes: tubes,
+                        from: i,
+                        to: j,
+                    }) {
                         return true;
                     } else {
                         self.stack.pop();
@@ -169,15 +155,11 @@ impl DFSSolver {
                     }
                     tubes[i].resize(amount, color);
                     tubes[j].truncate(offset);
-                    if self.inner_search(
-                        &State {
-                            tubes: tubes,
-                            from: j,
-                            to: i,
-                            amount: amount,
-                        },
-                        depth + 1,
-                    ) {
+                    if self.inner_search(&State {
+                        tubes: tubes,
+                        from: j,
+                        to: i,
+                    }) {
                         return true;
                     }
                 } else if *sorted_tubes[i].last().unwrap() == *sorted_tubes[j].last().unwrap() {
@@ -191,28 +173,22 @@ impl DFSSolver {
                     }
                     for (i, j) in indexes {
                         let mut tubes = sorted_tubes.clone();
-                        let mut amount = 1usize;
                         let mut offset_i = tubes[i].len() - 1;
                         let mut offset_j = tubes[j].len() + 1;
                         while offset_i > 0
                             && tubes[i][offset_i - 1] == color
                             && offset_j < self.height
                         {
-                            amount += 1;
                             offset_i -= 1;
                             offset_j += 1;
                         }
                         tubes[i].truncate(offset_i);
                         tubes[j].resize(offset_j, color);
-                        if self.inner_search(
-                            &State {
-                                tubes: tubes,
-                                from: i,
-                                to: j,
-                                amount: amount,
-                            },
-                            depth + 1,
-                        ) {
+                        if self.inner_search(&State {
+                            tubes: tubes,
+                            from: i,
+                            to: j,
+                        }) {
                             return true;
                         }
                     }

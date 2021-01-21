@@ -2,11 +2,11 @@ use crate::solver::{all_same, SolutionStep, Solver, Tube, TubeStats};
 use std::collections::{HashMap, VecDeque};
 
 struct State {
-    pub tubes: Vec<Tube>,
-    pub depth: usize,
-    pub from: usize,
-    pub to: usize,
-    pub amount: usize,
+    tubes: Vec<Tube>,
+    depth: usize,
+    from: usize,
+    to: usize,
+    amount: usize,
 }
 
 #[derive(Clone)]
@@ -160,8 +160,7 @@ impl BFSSolver {
             for j in (i + 1)..self.tubes {
                 if tube_stats[j].simple
                     && sorted_tubes[i][0] == sorted_tubes[j][0]
-                    && (state.depth > 0
-                        || sorted_tubes[i].len() + sorted_tubes[j].len() == self.height)
+                    && sorted_tubes[i].len() + sorted_tubes[j].len() >= self.height - 1
                 {
                     let mut tubes = sorted_tubes.clone();
                     tubes[i].clear();
