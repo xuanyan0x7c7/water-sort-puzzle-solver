@@ -1,7 +1,17 @@
 [package]
-name = "water-sort-puzzle-solver"
+name = "water_sort_puzzle_solver"
 version = "0.1.0"
 authors = ["Xuan Yan <xuanyan@xuanyan.ws>"]
 edition = "2018"
 
-[dependencies]
+[dev-dependencies]
+criterion = "0.3.3"
+rand = "0.8.2"
+
+[[bench]]
+name = "bfs"
+harness = false
+
+[[bench]]
+name = "dfs"
+harness = false
