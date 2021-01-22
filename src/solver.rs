@@ -22,8 +22,8 @@ pub fn all_same(tube: &Tube) -> bool {
         return true;
     }
     let first = tube[0];
-    for i in 1..tube.len() {
-        if tube[i] != first {
+    for c in tube[1..].iter() {
+        if *c != first {
             return false;
         }
     }

@@ -30,8 +30,8 @@ pub struct BFSSolver {
 impl Solver for BFSSolver {
     fn new(height: usize, colors: usize, initial_tubes: &Vec<Tube>) -> Self {
         Self {
-            height: height,
-            colors: colors,
+            height,
+            colors,
             tubes: initial_tubes.len(),
             initial_tubes: initial_tubes.clone(),
             states: HashMap::new(),
@@ -102,21 +102,7 @@ impl Solver for BFSSolver {
 
 impl BFSSolver {
     fn is_solved(&self, state: &Vec<Tube>) -> bool {
-        for tube in state {
-            let length = tube.len();
-            if length != 0 && length != self.height {
-                return false;
-            }
-            if !tube.is_empty() {
-                let first = tube.first().unwrap();
-                for i in 1..tube.len() {
-                    if tube[i] != *first {
-                        return false;
-                    }
-                }
-            }
-        }
-        true
+        state.iter().all(|tube| tube.is_empty() || (tube.len() == self.height && all_same(tube)))
     }
 
     fn inner_search(&mut self, state: &State) -> bool {
@@ -136,7 +122,7 @@ impl BFSSolver {
                 from: state.from,
                 to: state.to,
                 amount: state.amount,
-                transform: transform,
+                transform,
             },
         );
         if self.is_solved(&sorted_tubes) {
@@ -169,7 +155,7 @@ impl BFSSolver {
                         sorted_tubes[j][0],
                     );
                     self.queue.push_back(State {
-                        tubes: tubes,
+                        tubes,
                         depth: state.depth + 1,
                         from: i,
                         to: j,
@@ -202,13 +188,13 @@ impl BFSSolver {
                     tubes[i].resize(amount, color);
                     tubes[j].truncate(offset);
                     self.queue.push_back(State {
-                        tubes: tubes,
+                        tubes,
                         depth: state.depth + 1,
                         from: j,
                         to: i,
-                        amount: amount,
+                        amount,
                     });
-                } else if *sorted_tubes[i].last().unwrap() == *sorted_tubes[j].last().unwrap() {
+                } else if sorted_tubes[i].last() == sorted_tubes[j].last() {
                     let color = *sorted_tubes[i].last().unwrap();
                     let mut indexes = vec![];
                     if sorted_tubes[j].len() < self.height {
@@ -233,11 +219,11 @@ impl BFSSolver {
                         tubes[i].truncate(offset_i);
                         tubes[j].resize(offset_j, color);
                         self.queue.push_back(State {
-                            tubes: tubes,
+                            tubes,
                             depth: state.depth + 1,
                             from: i,
                             to: j,
-                            amount: amount,
+                            amount,
                         });
                     }
                 }

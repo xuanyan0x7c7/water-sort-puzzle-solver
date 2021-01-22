@@ -25,7 +25,7 @@ pub struct DFSSolver {
 impl Solver for DFSSolver {
     fn new(height: usize, _colors: usize, initial_tubes: &Vec<Tube>) -> Self {
         Self {
-            height: height,
+            height,
             tubes: initial_tubes.len(),
             initial_tubes: initial_tubes.clone(),
             states: HashSet::new(),
@@ -61,21 +61,7 @@ impl Solver for DFSSolver {
 
 impl DFSSolver {
     fn is_solved(&self, state: &Vec<Tube>) -> bool {
-        for tube in state {
-            let length = tube.len();
-            if length != 0 && length != self.height {
-                return false;
-            }
-            if !tube.is_empty() {
-                let first = tube.first().unwrap();
-                for i in 1..tube.len() {
-                    if tube[i] != *first {
-                        return false;
-                    }
-                }
-            }
-        }
-        true
+        state.iter().all(|tube| tube.is_empty() || (tube.len() == self.height && all_same(tube)))
     }
 
     fn inner_search(&mut self, state: &State) -> bool {
@@ -121,7 +107,7 @@ impl DFSSolver {
                         sorted_tubes[j][0],
                     );
                     if self.inner_search(&State {
-                        tubes: tubes,
+                        tubes,
                         from: i,
                         to: j,
                     }) {
@@ -162,7 +148,7 @@ impl DFSSolver {
                     }) {
                         return true;
                     }
-                } else if *sorted_tubes[i].last().unwrap() == *sorted_tubes[j].last().unwrap() {
+                } else if sorted_tubes[i].last() == sorted_tubes[j].last() {
                     let color = *sorted_tubes[i].last().unwrap();
                     let mut indexes = vec![];
                     if sorted_tubes[j].len() < self.height {
@@ -185,7 +171,7 @@ impl DFSSolver {
                         tubes[i].truncate(offset_i);
                         tubes[j].resize(offset_j, color);
                         if self.inner_search(&State {
-                            tubes: tubes,
+                            tubes,
                             from: i,
                             to: j,
                         }) {
