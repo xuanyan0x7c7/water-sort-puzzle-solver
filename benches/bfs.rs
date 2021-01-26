@@ -1,13 +1,11 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use water_sort_puzzle_solver::bfs_solver::BFSSolver;
-use water_sort_puzzle_solver::solver::{Solver, Tube};
+use water_sort_puzzle_solver::{BFSSolver, Solver, Tube};
 
 fn solve_random(colors: usize, height: usize, empty_tubes: usize) {
-    let mut rng = thread_rng();
     let mut pattern: Vec<u8> = (0..(colors * height)).map(|x| (x / height) as u8).collect();
-    pattern.shuffle(&mut rng);
+    pattern.shuffle(&mut thread_rng());
     let mut tubes: Vec<Tube> = vec![];
     for color in 0..colors {
         tubes.push(pattern[(color * height)..((color + 1) * height)].to_vec());

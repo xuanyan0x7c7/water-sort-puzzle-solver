@@ -1,9 +1,8 @@
-use crate::bfs_solver::BFSSolver;
-use crate::solver::{Solver, Tube};
 use clap::ArgMatches;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::time;
+use water_sort_puzzle_solver::{BFSSolver, Solver, Tube};
 
 #[derive(Clone)]
 struct Stat {

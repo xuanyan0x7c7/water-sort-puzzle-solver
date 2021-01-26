@@ -1,4 +1,4 @@
-use crate::solver::{all_same, SolutionStep, Solver, Tube, TubeStats};
+use crate::solver::base::{all_same, SolutionStep, Solver, Tube, TubeStats};
 use std::collections::HashSet;
 
 struct State {
