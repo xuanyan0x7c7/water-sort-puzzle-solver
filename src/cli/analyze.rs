@@ -52,6 +52,12 @@ pub fn run_analyzer(subcommand: &ArgMatches) {
         .map(|s| s.clone())
         .collect();
     let solvable_count = solvable_stats.len();
+
+    if solvable_count == 0 {
+        println!("0% solvable.");
+        return;
+    }
+
     let total_moves = solvable_stats
         .iter()
         .map(|s| s.moves.unwrap())
