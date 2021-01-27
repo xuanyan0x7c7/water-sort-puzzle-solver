@@ -1,5 +1,5 @@
 use crate::solver::base::{all_same, SolutionStep, Solver, Tube, TubeStats};
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 
 struct State {
     tubes: Vec<Tube>,
@@ -9,7 +9,6 @@ struct State {
     amount: usize,
 }
 
-#[derive(Clone)]
 struct Step {
     depth: usize,
     from: usize,
@@ -24,7 +23,6 @@ pub struct BFSSolver {
     tubes: usize,
     initial_tubes: Vec<Tube>,
     states: HashMap<Vec<Tube>, Step>,
-    queue: VecDeque<State>,
 }
 
 impl Solver for BFSSolver {
@@ -35,25 +33,29 @@ impl Solver for BFSSolver {
             tubes: initial_tubes.len(),
             initial_tubes: initial_tubes.clone(),
             states: HashMap::new(),
-            queue: VecDeque::new(),
         }
     }
 
     fn search(&mut self) -> bool {
-        self.queue.push_back(State {
+        let mut current_states = vec![State {
             tubes: self.initial_tubes.clone(),
             depth: 0,
             from: usize::MAX,
             to: usize::MAX,
             amount: 0,
-        });
-        while !self.queue.is_empty() {
-            let state = self.queue.pop_front().unwrap();
-            if self.inner_search(&state) {
-                return true;
+        }];
+        loop {
+            if current_states.is_empty() {
+                return false;
             }
+            let mut next_states = vec![];
+            for state in current_states {
+                if self.inner_search(&state, &mut next_states) {
+                    return true;
+                }
+            }
+            current_states = next_states;
         }
-        false
     }
 
     fn get_solution(&self) -> Vec<SolutionStep> {
@@ -64,7 +66,7 @@ impl Solver for BFSSolver {
         let mut steps = vec![];
         loop {
             let step = self.states.get(&state).unwrap();
-            steps.push(step.clone());
+            steps.push(step);
             if step.depth == 0 {
                 break;
             }
@@ -105,7 +107,7 @@ impl BFSSolver {
         state.iter().all(|tube| tube.is_empty() || (tube.len() == self.height && all_same(tube)))
     }
 
-    fn inner_search(&mut self, state: &State) -> bool {
+    fn inner_search(&mut self, state: &State, next_states: &mut Vec<State>) -> bool {
         let mut transform: Vec<usize> = (0..self.tubes).collect();
         transform.sort_unstable_by_key(|index| &state.tubes[*index]);
         let sorted_tubes: Vec<Tube> = transform
@@ -154,7 +156,7 @@ impl BFSSolver {
                         sorted_tubes[i].len() + sorted_tubes[j].len(),
                         sorted_tubes[j][0],
                     );
-                    self.queue.push_back(State {
+                    next_states.push(State {
                         tubes,
                         depth: state.depth + 1,
                         from: i,
@@ -187,7 +189,7 @@ impl BFSSolver {
                     }
                     tubes[i].resize(amount, color);
                     tubes[j].truncate(offset);
-                    self.queue.push_back(State {
+                    next_states.push(State {
                         tubes,
                         depth: state.depth + 1,
                         from: j,
@@ -218,7 +220,7 @@ impl BFSSolver {
                         }
                         tubes[i].truncate(offset_i);
                         tubes[j].resize(offset_j, color);
-                        self.queue.push_back(State {
+                        next_states.push(State {
                             tubes,
                             depth: state.depth + 1,
                             from: i,
