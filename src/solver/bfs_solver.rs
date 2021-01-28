@@ -1,8 +1,12 @@
-use crate::solver::base::{
-    all_same, is_solved as is_game_solved, SolutionStep, Solver, Tube, TubeStats,
-};
+use crate::solver::base::{is_solved as is_game_solved, SolutionStep, Solver, Tube};
 use std::collections::HashMap;
 use std::rc::Rc;
+
+struct TubeStats {
+    simple: bool,
+    color: Option<u8>,
+    color_height: usize,
+}
 
 #[derive(Clone)]
 struct State {
@@ -37,7 +41,7 @@ impl Solver for BFSSolver {
         let mut current_states = vec![];
         if self.push_state(
             &mut current_states,
-            self.initial_tubes.clone(),
+            &self.initial_tubes.clone(),
             0,
             usize::MAX,
             usize::MAX,
@@ -110,7 +114,7 @@ impl BFSSolver {
     fn push_state(
         &mut self,
         next_states: &mut Vec<Rc<State>>,
-        tubes: Vec<Tube>,
+        tubes: &Vec<Tube>,
         depth: usize,
         from: usize,
         to: usize,
@@ -128,15 +132,15 @@ impl BFSSolver {
             return false;
         }
         let state = Rc::new(State {
-            tubes: Rc::clone(&sorted_tubes),
+            tubes: sorted_tubes.clone(),
             depth,
             from,
             to,
             amount,
             transform,
         });
-        next_states.push(Rc::clone(&state));
-        self.states.insert(Rc::clone(&sorted_tubes), state);
+        next_states.push(state.clone());
+        self.states.insert(sorted_tubes.clone(), state);
         self.is_solved(&sorted_tubes)
     }
 
@@ -144,116 +148,114 @@ impl BFSSolver {
         let tube_stats: Vec<TubeStats> = state
             .tubes
             .iter()
-            .map(|tube| {
-                let is_simple = all_same(tube);
-                TubeStats {
-                    empty: tube.is_empty(),
-                    simple: is_simple,
-                    finished: is_simple && tube.len() == self.height,
+            .map(|tube| match tube.last() {
+                Some(&color) => {
+                    let mut color_height = 1usize;
+                    while tube.len() > color_height && tube[tube.len() - color_height - 1] == color
+                    {
+                        color_height += 1;
+                    }
+                    TubeStats {
+                        simple: color_height == tube.len(),
+                        color: Some(color),
+                        color_height,
+                    }
                 }
+                None => TubeStats {
+                    simple: false,
+                    color: None,
+                    color_height: 0,
+                },
             })
             .collect();
         for i in 0..(self.tubes - 1) {
-            if tube_stats[i].empty || !tube_stats[i].simple || tube_stats[i].finished {
+            if !tube_stats[i].simple || tube_stats[i].color_height == self.height {
                 continue;
             }
             for j in (i + 1)..self.tubes {
                 if tube_stats[j].simple
-                    && state.tubes[i][0] == state.tubes[j][0]
-                    && state.tubes[i].len() + state.tubes[j].len() >= self.height - 1
+                    && tube_stats[i].color == tube_stats[j].color
+                    && tube_stats[i].color_height + tube_stats[j].color_height >= self.height - 1
                 {
                     let mut tubes = (*state.tubes).clone();
                     tubes[i].clear();
                     tubes[j].resize(
-                        state.tubes[i].len() + state.tubes[j].len(),
-                        state.tubes[j][0],
+                        tube_stats[i].color_height + tube_stats[j].color_height,
+                        tube_stats[i].color.unwrap(),
                     );
                     return self.push_state(
                         next_states,
-                        tubes,
+                        &tubes,
                         state.depth + 1,
                         i,
                         j,
-                        state.tubes[i].len(),
+                        tube_stats[i].color_height,
                     );
                 }
             }
         }
         for i in 0..self.tubes {
-            if tube_stats[i].empty || !tube_stats[i].simple || tube_stats[i].finished {
+            if !tube_stats[i].simple || tube_stats[i].color_height == self.height {
                 continue;
             }
             for j in 0..self.tubes {
-                if j == i || tube_stats[j].simple || state.tubes[i].last() != state.tubes[j].last()
-                {
+                if j == i || tube_stats[j].simple || tube_stats[i].color != tube_stats[j].color {
                     continue;
                 }
-                let color = *state.tubes[j].last().unwrap();
-                let mut amount = 1usize;
-                while state.tubes[j].len() > amount
-                    && state.tubes[j][state.tubes[j].len() - amount - 1] == color
-                {
-                    amount += 1;
-                }
-                if state.tubes[i].len() + amount == self.height {
+                let amount = tube_stats[j].color_height;
+                if tube_stats[i].color_height + amount == self.height {
                     let mut tubes = (*state.tubes).clone();
-                    tubes[i].resize(self.height, color);
+                    tubes[i].resize(self.height, tube_stats[i].color.unwrap());
                     tubes[j].truncate(state.tubes[j].len() - amount);
-                    return self.push_state(next_states, tubes, state.depth + 1, j, i, amount);
+                    return self.push_state(next_states, &tubes, state.depth + 1, j, i, amount);
                 }
             }
         }
         for i in 0..(self.tubes - 1) {
-            if tube_stats[i].finished {
+            if tube_stats[i].color_height == self.height {
                 continue;
-            }
-            for j in (i + 1)..self.tubes {
-                if tube_stats[j].finished {
+            } else if tube_stats[i].color_height == 0 {
+                if i > 0 {
                     continue;
                 }
-                if tube_stats[i].empty {
-                    if tube_stats[j].simple {
+                for j in (i + 1)..self.tubes {
+                    if tube_stats[j].simple || tube_stats[j].color_height == 0 {
                         continue;
                     }
                     let mut tubes = (*state.tubes).clone();
-                    let color = *state.tubes[j].last().unwrap();
-                    let mut amount = 1usize;
-                    let mut offset = tubes[j].len() - amount;
-                    while offset > 0 && tubes[j][offset - 1] == color {
-                        amount += 1;
-                        offset -= 1;
-                    }
-                    tubes[i].resize(amount, color);
-                    tubes[j].truncate(offset);
-                    if self.push_state(next_states, tubes, state.depth + 1, j, i, amount) {
+                    let amount = tube_stats[j].color_height;
+                    tubes[i].resize(amount, tube_stats[j].color.unwrap());
+                    tubes[j].truncate(state.tubes[j].len() - amount);
+                    if self.push_state(next_states, &tubes, state.depth + 1, j, i, amount) {
                         return true;
                     }
-                } else if state.tubes[i].last() == state.tubes[j].last() {
-                    let color = *state.tubes[i].last().unwrap();
-                    let mut indexes = vec![];
-                    if state.tubes[j].len() < self.height {
-                        indexes.push((i, j));
-                    }
-                    if state.tubes[i].len() < self.height {
-                        indexes.push((j, i));
-                    }
-                    for (i, j) in indexes {
-                        let mut tubes = (*state.tubes).clone();
-                        let mut amount = 1usize;
-                        let mut offset_i = tubes[i].len() - 1;
-                        let mut offset_j = tubes[j].len() + 1;
-                        while offset_i > 0
-                            && tubes[i][offset_i - 1] == color
-                            && offset_j < self.height
-                        {
-                            amount += 1;
-                            offset_i -= 1;
-                            offset_j += 1;
+                }
+            } else {
+                for j in (i + 1)..self.tubes {
+                    if tube_stats[j].color_height < self.height
+                        && tube_stats[i].color == tube_stats[j].color
+                    {
+                        let mut indexes = vec![];
+                        if state.tubes[j].len() < self.height {
+                            indexes.push((i, j));
                         }
-                        tubes[i].truncate(offset_i);
-                        tubes[j].resize(offset_j, color);
-                        if self.push_state(next_states, tubes, state.depth + 1, i, j, amount) {
-                            return true;
+                        if state.tubes[i].len() < self.height {
+                            indexes.push((j, i));
+                        }
+                        for (x, y) in indexes {
+                            let mut tubes = (*state.tubes).clone();
+                            let amount = usize::min(
+                                tube_stats[x].color_height,
+                                self.height - tubes[y].len(),
+                            );
+                            tubes[x].truncate(state.tubes[x].len() - amount);
+                            tubes[y].resize(
+                                state.tubes[y].len() + amount,
+                                tube_stats[x].color.unwrap(),
+                            );
+                            if self.push_state(next_states, &tubes, state.depth + 1, x, y, amount) {
+                                return true;
+                            }
                         }
                     }
                 }

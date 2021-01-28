@@ -1,11 +1,5 @@
 pub type Tube = Vec<u8>;
 
-pub struct TubeStats {
-    pub empty: bool,
-    pub simple: bool,
-    pub finished: bool,
-}
-
 pub struct SolutionStep {
     pub from: usize,
     pub to: usize,
@@ -17,7 +11,7 @@ pub trait Solver {
     fn get_solution(&self) -> Vec<SolutionStep>;
 }
 
-pub fn all_same(tube: &Tube) -> bool {
+fn all_same(tube: &Tube) -> bool {
     if tube.is_empty() {
         return true;
     }
