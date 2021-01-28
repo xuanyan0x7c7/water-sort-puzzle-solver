@@ -1,15 +1,12 @@
-use crate::solver::base::{all_same, SolutionStep, Solver, Tube, TubeStats};
+use crate::solver::base::{
+    all_same, is_solved as is_game_solved, SolutionStep, Solver, Tube, TubeStats,
+};
 use std::collections::HashMap;
+use std::rc::Rc;
 
+#[derive(Clone)]
 struct State {
-    tubes: Vec<Tube>,
-    depth: usize,
-    from: usize,
-    to: usize,
-    amount: usize,
-}
-
-struct Step {
+    tubes: Rc<Vec<Tube>>,
     depth: usize,
     from: usize,
     to: usize,
@@ -22,7 +19,7 @@ pub struct BFSSolver {
     colors: usize,
     tubes: usize,
     initial_tubes: Vec<Tube>,
-    states: HashMap<Vec<Tube>, Step>,
+    states: HashMap<Rc<Vec<Tube>>, Rc<State>>,
 }
 
 impl Solver for BFSSolver {
@@ -37,17 +34,18 @@ impl Solver for BFSSolver {
     }
 
     fn search(&mut self) -> bool {
-        let mut current_states = vec![State {
-            tubes: self.initial_tubes.clone(),
-            depth: 0,
-            from: usize::MAX,
-            to: usize::MAX,
-            amount: 0,
-        }];
-        loop {
-            if current_states.is_empty() {
-                return false;
-            }
+        let mut current_states = vec![];
+        if self.push_state(
+            &mut current_states,
+            self.initial_tubes.clone(),
+            0,
+            usize::MAX,
+            usize::MAX,
+            0,
+        ) {
+            return true;
+        }
+        while !current_states.is_empty() {
             let mut next_states = vec![];
             for state in current_states {
                 if self.inner_search(&state, &mut next_states) {
@@ -56,6 +54,7 @@ impl Solver for BFSSolver {
             }
             current_states = next_states;
         }
+        false
     }
 
     fn get_solution(&self) -> Vec<SolutionStep> {
@@ -103,34 +102,47 @@ impl Solver for BFSSolver {
 }
 
 impl BFSSolver {
+    #[inline]
     fn is_solved(&self, state: &Vec<Tube>) -> bool {
-        state.iter().all(|tube| tube.is_empty() || (tube.len() == self.height && all_same(tube)))
+        is_game_solved(state, self.height)
     }
 
-    fn inner_search(&mut self, state: &State, next_states: &mut Vec<State>) -> bool {
+    fn push_state(
+        &mut self,
+        next_states: &mut Vec<Rc<State>>,
+        tubes: Vec<Tube>,
+        depth: usize,
+        from: usize,
+        to: usize,
+        amount: usize,
+    ) -> bool {
         let mut transform: Vec<usize> = (0..self.tubes).collect();
-        transform.sort_unstable_by_key(|index| &state.tubes[*index]);
-        let sorted_tubes: Vec<Tube> = transform
-            .iter()
-            .map(|index| state.tubes[*index].clone())
-            .collect();
+        transform.sort_unstable_by_key(|index| &tubes[*index]);
+        let sorted_tubes: Rc<Vec<Tube>> = Rc::new(
+            transform
+                .iter()
+                .map(|index| tubes[*index].clone())
+                .collect(),
+        );
         if self.states.get(&sorted_tubes).is_some() {
             return false;
         }
-        self.states.insert(
-            sorted_tubes.clone(),
-            Step {
-                depth: state.depth,
-                from: state.from,
-                to: state.to,
-                amount: state.amount,
-                transform,
-            },
-        );
-        if self.is_solved(&sorted_tubes) {
-            return true;
-        }
-        let tube_stats: Vec<TubeStats> = sorted_tubes
+        let state = Rc::new(State {
+            tubes: Rc::clone(&sorted_tubes),
+            depth,
+            from,
+            to,
+            amount,
+            transform,
+        });
+        next_states.push(Rc::clone(&state));
+        self.states.insert(Rc::clone(&sorted_tubes), state);
+        self.is_solved(&sorted_tubes)
+    }
+
+    fn inner_search(&mut self, state: &State, next_states: &mut Vec<Rc<State>>) -> bool {
+        let tube_stats: Vec<TubeStats> = state
+            .tubes
             .iter()
             .map(|tube| {
                 let is_simple = all_same(tube);
@@ -147,23 +159,47 @@ impl BFSSolver {
             }
             for j in (i + 1)..self.tubes {
                 if tube_stats[j].simple
-                    && sorted_tubes[i][0] == sorted_tubes[j][0]
-                    && sorted_tubes[i].len() + sorted_tubes[j].len() >= self.height - 1
+                    && state.tubes[i][0] == state.tubes[j][0]
+                    && state.tubes[i].len() + state.tubes[j].len() >= self.height - 1
                 {
-                    let mut tubes = sorted_tubes.clone();
+                    let mut tubes = (*state.tubes).clone();
                     tubes[i].clear();
                     tubes[j].resize(
-                        sorted_tubes[i].len() + sorted_tubes[j].len(),
-                        sorted_tubes[j][0],
+                        state.tubes[i].len() + state.tubes[j].len(),
+                        state.tubes[j][0],
                     );
-                    next_states.push(State {
+                    return self.push_state(
+                        next_states,
                         tubes,
-                        depth: state.depth + 1,
-                        from: i,
-                        to: j,
-                        amount: sorted_tubes[i].len(),
-                    });
-                    return false;
+                        state.depth + 1,
+                        i,
+                        j,
+                        state.tubes[i].len(),
+                    );
+                }
+            }
+        }
+        for i in 0..self.tubes {
+            if tube_stats[i].empty || !tube_stats[i].simple || tube_stats[i].finished {
+                continue;
+            }
+            for j in 0..self.tubes {
+                if j == i || tube_stats[j].simple || state.tubes[i].last() != state.tubes[j].last()
+                {
+                    continue;
+                }
+                let color = *state.tubes[j].last().unwrap();
+                let mut amount = 1usize;
+                while state.tubes[j].len() > amount
+                    && state.tubes[j][state.tubes[j].len() - amount - 1] == color
+                {
+                    amount += 1;
+                }
+                if state.tubes[i].len() + amount == self.height {
+                    let mut tubes = (*state.tubes).clone();
+                    tubes[i].resize(self.height, color);
+                    tubes[j].truncate(state.tubes[j].len() - amount);
+                    return self.push_state(next_states, tubes, state.depth + 1, j, i, amount);
                 }
             }
         }
@@ -179,8 +215,8 @@ impl BFSSolver {
                     if tube_stats[j].simple {
                         continue;
                     }
-                    let mut tubes = sorted_tubes.clone();
-                    let color = *sorted_tubes[j].last().unwrap();
+                    let mut tubes = (*state.tubes).clone();
+                    let color = *state.tubes[j].last().unwrap();
                     let mut amount = 1usize;
                     let mut offset = tubes[j].len() - amount;
                     while offset > 0 && tubes[j][offset - 1] == color {
@@ -189,24 +225,20 @@ impl BFSSolver {
                     }
                     tubes[i].resize(amount, color);
                     tubes[j].truncate(offset);
-                    next_states.push(State {
-                        tubes,
-                        depth: state.depth + 1,
-                        from: j,
-                        to: i,
-                        amount,
-                    });
-                } else if sorted_tubes[i].last() == sorted_tubes[j].last() {
-                    let color = *sorted_tubes[i].last().unwrap();
+                    if self.push_state(next_states, tubes, state.depth + 1, j, i, amount) {
+                        return true;
+                    }
+                } else if state.tubes[i].last() == state.tubes[j].last() {
+                    let color = *state.tubes[i].last().unwrap();
                     let mut indexes = vec![];
-                    if sorted_tubes[j].len() < self.height {
+                    if state.tubes[j].len() < self.height {
                         indexes.push((i, j));
                     }
-                    if sorted_tubes[i].len() < self.height {
+                    if state.tubes[i].len() < self.height {
                         indexes.push((j, i));
                     }
                     for (i, j) in indexes {
-                        let mut tubes = sorted_tubes.clone();
+                        let mut tubes = (*state.tubes).clone();
                         let mut amount = 1usize;
                         let mut offset_i = tubes[i].len() - 1;
                         let mut offset_j = tubes[j].len() + 1;
@@ -220,13 +252,9 @@ impl BFSSolver {
                         }
                         tubes[i].truncate(offset_i);
                         tubes[j].resize(offset_j, color);
-                        next_states.push(State {
-                            tubes,
-                            depth: state.depth + 1,
-                            from: i,
-                            to: j,
-                            amount,
-                        });
+                        if self.push_state(next_states, tubes, state.depth + 1, i, j, amount) {
+                            return true;
+                        }
                     }
                 }
             }

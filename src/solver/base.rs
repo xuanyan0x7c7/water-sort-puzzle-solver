@@ -29,3 +29,9 @@ pub fn all_same(tube: &Tube) -> bool {
     }
     true
 }
+
+pub fn is_solved(state: &Vec<Tube>, height: usize) -> bool {
+    state
+        .iter()
+        .all(|tube| tube.is_empty() || (tube.len() == height && all_same(tube)))
+}

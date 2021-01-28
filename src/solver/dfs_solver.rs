@@ -1,4 +1,6 @@
-use crate::solver::base::{all_same, SolutionStep, Solver, Tube, TubeStats};
+use crate::solver::base::{
+    all_same, is_solved as is_game_solved, SolutionStep, Solver, Tube, TubeStats,
+};
 use std::collections::HashSet;
 
 struct State {
@@ -60,8 +62,9 @@ impl Solver for DFSSolver {
 }
 
 impl DFSSolver {
+    #[inline]
     fn is_solved(&self, state: &Vec<Tube>) -> bool {
-        state.iter().all(|tube| tube.is_empty() || (tube.len() == self.height && all_same(tube)))
+        is_game_solved(state, self.height)
     }
 
     fn inner_search(&mut self, state: &State) -> bool {
