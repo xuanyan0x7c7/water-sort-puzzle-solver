@@ -1,11 +1,6 @@
-use crate::solver::base::{is_solved as is_game_solved, SolutionStep, Solver, Tube};
+use super::utils::{get_transform, get_tube_stat, is_solved, pour, TubeStats};
+use super::{SolutionStep, Solver};
 use std::collections::HashSet;
-
-struct TubeStats {
-    simple: bool,
-    color: Option<u8>,
-    color_height: usize,
-}
 
 #[derive(Clone)]
 struct State {
@@ -17,17 +12,18 @@ struct State {
 pub struct DFSSolver {
     height: usize,
     tubes: usize,
-    initial_tubes: Vec<Tube>,
-    states: HashSet<Vec<Tube>>,
+    initial_tubes: Vec<u8>,
+    states: HashSet<Vec<u8>>,
     stack: Vec<State>,
 }
 
 impl Solver for DFSSolver {
-    fn new(height: usize, _colors: usize, initial_tubes: &Vec<Tube>) -> Self {
+    fn new(height: usize, _colors: usize, initial_tubes: Vec<u8>) -> Self {
+        let tubes = initial_tubes.len() / height;
         Self {
             height,
-            tubes: initial_tubes.len(),
-            initial_tubes: initial_tubes.clone(),
+            tubes,
+            initial_tubes,
             states: HashSet::new(),
             stack: vec![],
         }
@@ -56,19 +52,9 @@ impl Solver for DFSSolver {
 }
 
 impl DFSSolver {
-    #[inline]
-    fn is_solved(&self, state: &Vec<Tube>) -> bool {
-        is_game_solved(state, self.height)
-    }
-
-    fn inner_search(&mut self, state: &Vec<Tube>, from: usize, to: usize) -> bool {
-        let mut transform: Vec<usize> = (0..self.tubes).collect();
-        transform.sort_unstable_by_key(|index| &state[*index]);
-        let sorted_tubes: Vec<Tube> = transform
-            .iter()
-            .map(|index| state[*index].clone())
-            .collect();
-        if self.states.get(&sorted_tubes).is_some() {
+    fn inner_search(&mut self, state: &Vec<u8>, from: usize, to: usize) -> bool {
+        let (transform, sorted_tubes) = get_transform(state, self.height, self.tubes);
+        if self.states.contains(&sorted_tubes) {
             return false;
         }
         self.states.insert(sorted_tubes.clone());
@@ -77,30 +63,12 @@ impl DFSSolver {
             to,
             transform,
         });
-        if self.is_solved(&sorted_tubes) {
+        if is_solved(&sorted_tubes, self.height) {
             return true;
         }
         let tube_stats: Vec<TubeStats> = sorted_tubes
-            .iter()
-            .map(|tube| match tube.last() {
-                Some(&color) => {
-                    let mut color_height = 1usize;
-                    while tube.len() > color_height && tube[tube.len() - color_height - 1] == color
-                    {
-                        color_height += 1;
-                    }
-                    TubeStats {
-                        simple: color_height == tube.len(),
-                        color: Some(color),
-                        color_height,
-                    }
-                }
-                None => TubeStats {
-                    simple: false,
-                    color: None,
-                    color_height: 0,
-                },
-            })
+            .chunks_exact(self.height)
+            .map(|tube| get_tube_stat(tube, self.height))
             .collect();
         for i in 0..(self.tubes - 1) {
             if !tube_stats[i].simple || tube_stats[i].color_height == self.height {
@@ -109,10 +77,13 @@ impl DFSSolver {
             for j in (i + 1)..self.tubes {
                 if tube_stats[j].simple && tube_stats[i].color == tube_stats[j].color {
                     let mut tubes = sorted_tubes.clone();
-                    tubes[i].clear();
-                    tubes[j].resize(
-                        tube_stats[i].color_height + tube_stats[j].color_height,
-                        tube_stats[j].color.unwrap(),
+                    pour(
+                        &mut tubes,
+                        self.height,
+                        &tube_stats,
+                        i,
+                        j,
+                        tube_stats[i].size,
                     );
                     if self.inner_search(&tubes, i, j) {
                         return true;
@@ -134,8 +105,7 @@ impl DFSSolver {
                 let amount = tube_stats[j].color_height;
                 if tube_stats[i].color_height + amount == self.height {
                     let mut tubes = sorted_tubes.clone();
-                    tubes[i].resize(self.height, tube_stats[i].color.unwrap());
-                    tubes[j].truncate(sorted_tubes[j].len() - amount);
+                    pour(&mut tubes, self.height, &tube_stats, j, i, amount);
                     if self.inner_search(&tubes, j, i) {
                         return true;
                     } else {
@@ -158,8 +128,7 @@ impl DFSSolver {
                     }
                     let mut tubes = sorted_tubes.clone();
                     let amount = tube_stats[j].color_height;
-                    tubes[i].resize(amount, tube_stats[j].color.unwrap());
-                    tubes[j].truncate(sorted_tubes[j].len() - amount);
+                    pour(&mut tubes, self.height, &tube_stats, j, i, amount);
                     if self.inner_search(&tubes, j, i) {
                         return true;
                     }
@@ -170,24 +139,20 @@ impl DFSSolver {
                         && tube_stats[i].color == tube_stats[j].color
                     {
                         let mut indexes = vec![];
-                        if sorted_tubes[j].len() < self.height {
+                        if tube_stats[j].size < self.height {
                             indexes.push((i, j));
                         }
-                        if sorted_tubes[i].len() < self.height {
+                        if tube_stats[i].size < self.height {
                             indexes.push((j, i));
                         }
                         for (x, y) in indexes {
                             let mut tubes = sorted_tubes.clone();
                             let amount = usize::min(
                                 tube_stats[x].color_height,
-                                self.height - tubes[y].len(),
+                                self.height - tube_stats[y].size,
                             );
-                            tubes[x].truncate(sorted_tubes[x].len() - amount);
-                            tubes[y].resize(
-                                sorted_tubes[y].len() + amount,
-                                tube_stats[x].color.unwrap(),
-                            );
-                            if self.inner_search(&tubes, i, j) {
+                            pour(&mut tubes, self.height, &tube_stats, x, y, amount);
+                            if self.inner_search(&tubes, x, y) {
                                 return true;
                             }
                         }

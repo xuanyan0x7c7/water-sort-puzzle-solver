@@ -1,7 +1,6 @@
 mod cli;
 
-use crate::cli::analyze::run_analyzer;
-use crate::cli::solve::run_solver;
+use crate::cli::{run_analyzer, run_solver};
 use clap::{App, Arg, SubCommand};
 
 fn main() {

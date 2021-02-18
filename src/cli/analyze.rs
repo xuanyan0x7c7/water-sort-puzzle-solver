@@ -2,7 +2,7 @@ use clap::ArgMatches;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::time;
-use water_sort_puzzle_solver::{BFSSolver, Solver, Tube};
+use water_sort_puzzle_solver::*;
 
 #[derive(Clone)]
 struct Stat {
@@ -24,16 +24,14 @@ pub fn run_analyzer(subcommand: &ArgMatches) {
 
     for _ in 0..runs {
         let mut rng = thread_rng();
-        let mut pattern: Vec<u8> = (0..(colors * height)).map(|x| (x / height) as u8).collect();
-        pattern.shuffle(&mut rng);
-        let mut tubes: Vec<Tube> = vec![];
-        for color in 0..colors {
-            tubes.push(pattern[(color * height)..((color + 1) * height)].to_vec());
+        let mut tubes: Vec<u8> = (0..(colors * height))
+            .map(|x| (x / height + 1) as u8)
+            .collect();
+        tubes.shuffle(&mut rng);
+        for _ in 0..(tube_count - colors) * height {
+            tubes.push(0);
         }
-        for _ in 0..(tube_count - colors) {
-            tubes.push(vec![]);
-        }
-        let mut solver = BFSSolver::new(height, colors, &tubes);
+        let mut solver = BFSSolver::new(height, colors, tubes);
         let now = time::Instant::now();
         let mut stat = Stat {
             moves: None,

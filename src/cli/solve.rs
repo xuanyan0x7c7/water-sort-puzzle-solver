@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::io::stdin;
 use std::process;
 use std::time;
-use water_sort_puzzle_solver::{BFSSolver, DFSSolver, Solver, Tube};
+use water_sort_puzzle_solver::*;
 
 fn solve(solver: &mut impl Solver) {
     let now = time::Instant::now();
@@ -49,13 +49,10 @@ pub fn run_solver(subcommand: &ArgMatches) {
     let mut color_map: HashMap<String, (usize, usize)> = HashMap::new();
     for colors in color_list.iter() {
         for c in colors {
-            match color_map.get_mut(c) {
-                Some(item) => {
-                    item.1 += 1;
-                }
-                None => {
-                    color_map.insert(c.to_string(), (color_map.len(), 1));
-                }
+            if let Some(item) = color_map.get_mut(c) {
+                item.1 += 1;
+            } else {
+                color_map.insert(c.to_string(), (color_map.len(), 1));
             }
         }
     }
@@ -76,19 +73,19 @@ pub fn run_solver(subcommand: &ArgMatches) {
             process::exit(1);
         }
     }
-    let tubes: Vec<Tube> = color_list
-        .iter()
-        .map(|colors| {
-            colors
-                .iter()
-                .map(|c| color_map.get(c).unwrap().0 as u8)
-                .collect()
-        })
-        .collect();
+    let mut tubes = vec![];
+    for colors in color_list.iter() {
+        for c in colors.iter() {
+            tubes.push((color_map.get(c).unwrap().0 + 1) as u8);
+        }
+        for _ in 0..height - colors.len() {
+            tubes.push(0);
+        }
+    }
 
     if use_dfs {
-        solve(&mut DFSSolver::new(height, color_count, &tubes));
+        solve(&mut DFSSolver::new(height, color_count, tubes));
     } else {
-        solve(&mut BFSSolver::new(height, color_count, &tubes));
+        solve(&mut BFSSolver::new(height, color_count, tubes));
     }
 }
