@@ -1,6 +1,7 @@
 use clap::ArgMatches;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use std::iter;
 use std::time;
 use water_sort_puzzle_solver::*;
 
@@ -18,9 +19,9 @@ pub fn run_analyzer(subcommand: &ArgMatches) {
         .unwrap_or((colors + 2).to_string().as_str())
         .parse()
         .unwrap();
-    let runs: usize = subcommand.value_of("runs").unwrap().parse().unwrap();
+    let runs = subcommand.value_of("runs").unwrap().parse().unwrap();
 
-    let mut stats: Vec<Stat> = vec![];
+    let mut stats = vec![];
 
     for _ in 0..runs {
         let mut rng = thread_rng();
@@ -28,10 +29,8 @@ pub fn run_analyzer(subcommand: &ArgMatches) {
             .map(|x| (x / height + 1) as u8)
             .collect();
         tubes.shuffle(&mut rng);
-        for _ in 0..(tube_count - colors) * height {
-            tubes.push(0);
-        }
-        let mut solver = BFSSolver::new(height, colors, tubes);
+        tubes.extend(iter::repeat(0).take((tube_count - colors) * height));
+        let mut solver = BFSSolver::new(height, tubes);
         let now = time::Instant::now();
         let mut stat = Stat {
             moves: None,

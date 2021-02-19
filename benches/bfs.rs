@@ -1,6 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use std::iter;
 use water_sort_puzzle_solver::*;
 
 fn solve_random(colors: usize, height: usize, empty_tubes: usize) {
@@ -8,11 +9,8 @@ fn solve_random(colors: usize, height: usize, empty_tubes: usize) {
         .map(|x| (x / height + 1) as u8)
         .collect();
     tubes.shuffle(&mut thread_rng());
-    for _ in 0..empty_tubes * height {
-        tubes.push(0);
-    }
-    let mut solver = BFSSolver::new(height, colors, tubes);
-    solver.search();
+    tubes.extend(iter::repeat(0).take(empty_tubes * height));
+    BFSSolver::new(height, tubes).search();
 }
 
 fn criterion_benchmark(c: &mut Criterion) {

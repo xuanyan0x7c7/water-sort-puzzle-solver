@@ -1,6 +1,7 @@
 use super::utils::{get_transform, get_tube_stat, is_solved, pour, pour_back, TubeStats};
 use super::{SolutionStep, Solver};
 use std::collections::{HashMap, VecDeque};
+use std::iter;
 use std::rc::Rc;
 
 #[derive(Clone)]
@@ -15,7 +16,6 @@ struct State {
 
 pub struct BFSSolver {
     height: usize,
-    colors: usize,
     tubes: usize,
     initial_tubes: Vec<u8>,
     states: HashMap<Rc<Vec<u8>>, Rc<State>>,
@@ -23,12 +23,10 @@ pub struct BFSSolver {
 }
 
 impl Solver for BFSSolver {
-    fn new(height: usize, colors: usize, initial_tubes: Vec<u8>) -> Self {
-        let tubes = initial_tubes.len() / height;
+    fn new(height: usize, initial_tubes: Vec<u8>) -> Self {
         Self {
             height,
-            colors,
-            tubes,
+            tubes: initial_tubes.len() / height,
             initial_tubes,
             states: HashMap::new(),
             queue: VecDeque::new(),
@@ -49,11 +47,10 @@ impl Solver for BFSSolver {
     }
 
     fn get_solution(&self) -> Vec<SolutionStep> {
-        let mut state = vec![0; (self.tubes - self.colors) * self.height];
-        for i in 0..self.colors {
-            for _ in 0..self.height {
-                state.push((i + 1) as u8);
-            }
+        let colors = self.initial_tubes.iter().filter(|x| **x > 0).count();
+        let mut state = vec![0; (self.tubes - colors) * self.height];
+        for i in 1..=colors {
+            state.extend(iter::repeat(i as u8).take(self.height));
         }
         let mut steps = vec![];
         loop {

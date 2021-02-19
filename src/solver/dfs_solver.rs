@@ -18,11 +18,10 @@ pub struct DFSSolver {
 }
 
 impl Solver for DFSSolver {
-    fn new(height: usize, _colors: usize, initial_tubes: Vec<u8>) -> Self {
-        let tubes = initial_tubes.len() / height;
+    fn new(height: usize, initial_tubes: Vec<u8>) -> Self {
         Self {
             height,
-            tubes,
+            tubes: initial_tubes.len() / height,
             initial_tubes,
             states: HashSet::new(),
             stack: vec![],

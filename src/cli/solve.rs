@@ -84,8 +84,8 @@ pub fn run_solver(subcommand: &ArgMatches) {
     }
 
     if use_dfs {
-        solve(&mut DFSSolver::new(height, color_count, tubes));
+        solve(&mut DFSSolver::new(height, tubes));
     } else {
-        solve(&mut BFSSolver::new(height, color_count, tubes));
+        solve(&mut BFSSolver::new(height, tubes));
     }
 }

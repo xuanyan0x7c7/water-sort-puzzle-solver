@@ -8,7 +8,7 @@ pub struct SolutionStep {
 }
 
 pub trait Solver {
-    fn new(height: usize, colors: usize, initial_tubes: Vec<u8>) -> Self;
+    fn new(height: usize, initial_tubes: Vec<u8>) -> Self;
     fn search(&mut self) -> bool;
     fn get_solution(&self) -> Vec<SolutionStep>;
 }
