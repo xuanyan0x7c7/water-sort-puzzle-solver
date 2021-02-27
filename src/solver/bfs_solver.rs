@@ -47,7 +47,7 @@ impl Solver for BFSSolver {
     }
 
     fn get_solution(&self) -> Vec<SolutionStep> {
-        let colors = self.initial_tubes.iter().filter(|x| **x > 0).count();
+        let colors = self.initial_tubes.iter().filter(|x| **x > 0).count() / self.height;
         let mut state = vec![0; (self.tubes - colors) * self.height];
         for i in 1..=colors {
             state.extend(iter::repeat(i as u8).take(self.height));
