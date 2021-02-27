@@ -1,8 +1,9 @@
-use super::utils::{get_transform, get_tube_stat, is_solved, pour, pour_back, TubeStats};
-use super::{SolutionStep, Solver};
 use std::collections::{HashMap, VecDeque};
 use std::iter;
 use std::rc::Rc;
+
+use super::utils::{get_transform, get_tube_stat, is_solved, pour, pour_back, TubeStats};
+use super::{SolutionStep, Solver};
 
 #[derive(Clone)]
 struct State {

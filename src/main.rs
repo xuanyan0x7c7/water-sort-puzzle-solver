@@ -1,7 +1,8 @@
 mod cli;
 
-use crate::cli::{run_analyzer, run_solver};
 use clap::{App, Arg, SubCommand};
+
+use crate::cli::{run_analyzer, run_solver};
 
 fn main() {
     let matches = App::new("Water Sort Puzzle")

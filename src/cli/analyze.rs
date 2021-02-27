@@ -1,8 +1,10 @@
+use std::iter;
+use std::time;
+
 use clap::ArgMatches;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use std::iter;
-use std::time;
+
 use water_sort_puzzle_solver::*;
 
 #[derive(Clone)]

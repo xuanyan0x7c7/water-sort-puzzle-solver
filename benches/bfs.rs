@@ -1,7 +1,9 @@
+use std::iter;
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use std::iter;
+
 use water_sort_puzzle_solver::*;
 
 fn solve_random(colors: usize, height: usize, empty_tubes: usize) {

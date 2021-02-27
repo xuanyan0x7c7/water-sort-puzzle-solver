@@ -1,8 +1,10 @@
-use clap::ArgMatches;
 use std::collections::HashMap;
 use std::io::stdin;
 use std::process;
 use std::time;
+
+use clap::ArgMatches;
+
 use water_sort_puzzle_solver::*;
 
 fn solve(solver: &mut impl Solver) {

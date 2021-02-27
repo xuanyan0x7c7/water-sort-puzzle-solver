@@ -1,6 +1,7 @@
+use std::collections::HashSet;
+
 use super::utils::{get_transform, get_tube_stat, is_solved, pour, TubeStats};
 use super::{SolutionStep, Solver};
-use std::collections::HashSet;
 
 #[derive(Clone)]
 struct State {
