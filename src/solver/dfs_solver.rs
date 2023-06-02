@@ -1,7 +1,6 @@
-use std::collections::HashSet;
-
-use super::utils::{get_transform, get_tube_stat, is_solved, pour, TubeStats};
+use super::utils::{get_transform, get_tube_stat, is_solved, pour};
 use super::{SolutionStep, Solver};
+use std::collections::HashSet;
 
 #[derive(Clone)]
 struct State {
@@ -52,7 +51,7 @@ impl Solver for DFSSolver {
 }
 
 impl DFSSolver {
-    fn inner_search(&mut self, state: &Vec<u8>, from: usize, to: usize) -> bool {
+    fn inner_search(&mut self, state: &[u8], from: usize, to: usize) -> bool {
         let (transform, sorted_tubes) = get_transform(state, self.height, self.tubes);
         if self.states.contains(&sorted_tubes) {
             return false;
@@ -66,17 +65,17 @@ impl DFSSolver {
         if is_solved(&sorted_tubes, self.height) {
             return true;
         }
-        let tube_stats: Vec<TubeStats> = sorted_tubes
+        let tube_stats = sorted_tubes
             .chunks_exact(self.height)
             .map(|tube| get_tube_stat(tube, self.height))
-            .collect();
+            .collect::<Vec<_>>();
         for i in 0..(self.tubes - 1) {
             if !tube_stats[i].simple || tube_stats[i].color_height == self.height {
                 continue;
             }
             for j in (i + 1)..self.tubes {
                 if tube_stats[j].simple && tube_stats[i].color == tube_stats[j].color {
-                    let mut tubes = sorted_tubes.clone();
+                    let mut tubes = sorted_tubes;
                     pour(
                         &mut tubes,
                         self.height,
@@ -104,7 +103,7 @@ impl DFSSolver {
                 }
                 let amount = tube_stats[j].color_height;
                 if tube_stats[i].color_height + amount == self.height {
-                    let mut tubes = sorted_tubes.clone();
+                    let mut tubes = sorted_tubes;
                     pour(&mut tubes, self.height, &tube_stats, j, i, amount);
                     if self.inner_search(&tubes, j, i) {
                         return true;

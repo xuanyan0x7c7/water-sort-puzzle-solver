@@ -38,7 +38,7 @@ pub fn run_solver(subcommand: &ArgMatches) {
                     line_input
                         .split_ascii_whitespace()
                         .take(height)
-                        .map(|s| String::from(s))
+                        .map(String::from)
                         .collect(),
                 );
             }
@@ -80,9 +80,7 @@ pub fn run_solver(subcommand: &ArgMatches) {
         for c in colors.iter() {
             tubes.push((color_map.get(c).unwrap().0 + 1) as u8);
         }
-        for _ in 0..height - colors.len() {
-            tubes.push(0);
-        }
+        tubes.resize(colors.len(), 0);
     }
 
     if use_dfs {

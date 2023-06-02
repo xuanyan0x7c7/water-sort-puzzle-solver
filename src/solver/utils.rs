@@ -1,5 +1,5 @@
 pub(super) fn get_transform(
-    tubes: &Vec<u8>,
+    tubes: &[u8],
     height: usize,
     tube_count: usize,
 ) -> (Vec<usize>, Vec<u8>) {
@@ -13,7 +13,7 @@ pub(super) fn get_transform(
     (transform, sorted_tubes)
 }
 
-pub(super) fn is_solved(state: &Vec<u8>, height: usize) -> bool {
+pub(super) fn is_solved(state: &[u8], height: usize) -> bool {
     state.chunks_exact(height).all(|tube| {
         if tube[0] == 0 {
             return true;
@@ -61,9 +61,9 @@ pub(super) fn get_tube_stat(tube: &[u8], height: usize) -> TubeStats {
 }
 
 pub(super) fn pour(
-    state: &mut Vec<u8>,
+    state: &mut [u8],
     height: usize,
-    tube_stats: &Vec<TubeStats>,
+    tube_stats: &[TubeStats],
     from: usize,
     to: usize,
     amount: usize,
@@ -74,7 +74,7 @@ pub(super) fn pour(
     state[to_offset..to_offset + amount].fill(tube_stats[from].color);
 }
 
-pub(super) fn pour_back(state: &mut Vec<u8>, height: usize, from: usize, to: usize, amount: usize) {
+pub(super) fn pour_back(state: &mut [u8], height: usize, from: usize, to: usize, amount: usize) {
     let from_stat = get_tube_stat(&state[from * height..(from + 1) * height], height);
     let to_stat = get_tube_stat(&state[to * height..(to + 1) * height], height);
     let from_offset = from * height + from_stat.size;

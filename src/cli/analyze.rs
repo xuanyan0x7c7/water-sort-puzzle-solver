@@ -45,11 +45,11 @@ pub fn run_analyzer(subcommand: &ArgMatches) {
         stats.push(stat);
     }
 
-    let solvable_stats: Vec<Stat> = stats
+    let solvable_stats = stats
         .iter()
         .filter(|s| s.moves.is_some())
-        .map(|s| s.clone())
-        .collect();
+        .cloned()
+        .collect::<Vec<_>>();
     let solvable_count = solvable_stats.len();
 
     if solvable_count == 0 {
@@ -100,11 +100,10 @@ pub fn run_analyzer(subcommand: &ArgMatches) {
     );
     println!(
         "Average time {}, min {}, max {}, stddev {}.",
-        total_time as f64 / solvable_count as f64,
+        total_time / solvable_count as f64,
         min_time,
         max_time,
-        (total_square_time as f64 / solvable_count as f64
-            - (total_time as f64 / solvable_count as f64).powi(2))
-        .sqrt(),
+        (total_square_time / solvable_count as f64 - (total_time / solvable_count as f64).powi(2))
+            .sqrt(),
     );
 }
