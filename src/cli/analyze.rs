@@ -1,10 +1,8 @@
-use std::iter;
-use std::time;
-
 use clap::ArgMatches;
+use itertools::Itertools;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-
+use std::time;
 use water_sort_puzzle_solver::*;
 
 #[derive(Clone)]
@@ -27,11 +25,11 @@ pub fn run_analyzer(subcommand: &ArgMatches) {
 
     for _ in 0..runs {
         let mut rng = thread_rng();
-        let mut tubes: Vec<u8> = (0..(colors * height))
+        let mut tubes = (0..(colors * height))
             .map(|x| (x / height + 1) as u8)
-            .collect();
+            .collect_vec();
         tubes.shuffle(&mut rng);
-        tubes.extend(iter::repeat(0).take((tube_count - colors) * height));
+        tubes.resize(tube_count * height, 0);
         let mut solver = BFSSolver::new(height, tubes);
         let now = time::Instant::now();
         let mut stat = Stat {
@@ -49,7 +47,7 @@ pub fn run_analyzer(subcommand: &ArgMatches) {
         .iter()
         .filter(|s| s.moves.is_some())
         .cloned()
-        .collect::<Vec<_>>();
+        .collect_vec();
     let solvable_count = solvable_stats.len();
 
     if solvable_count == 0 {
@@ -90,19 +88,15 @@ pub fn run_analyzer(subcommand: &ArgMatches) {
 
     println!("{}% solvable.", (solvable_count * 100) as f64 / runs as f64);
     println!(
-        "Average {} moves, min {}, max {}, stddev {}.",
+        "Average {} moves, min {min_moves}, max {max_moves}, stddev {}.",
         total_moves as f64 / solvable_count as f64,
-        min_moves,
-        max_moves,
         (total_square_moves as f64 / solvable_count as f64
             - (total_moves as f64 / solvable_count as f64).powi(2))
         .sqrt(),
     );
     println!(
-        "Average time {}, min {}, max {}, stddev {}.",
+        "Average time {}, min {min_time}, max {max_time}, stddev {}.",
         total_time / solvable_count as f64,
-        min_time,
-        max_time,
         (total_square_time / solvable_count as f64 - (total_time / solvable_count as f64).powi(2))
             .sqrt(),
     );

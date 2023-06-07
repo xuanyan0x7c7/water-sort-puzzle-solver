@@ -1,6 +1,7 @@
 use super::utils::{get_transform, get_tube_stat, is_solved, pour};
 use super::{SolutionStep, Solver};
-use std::collections::HashSet;
+use itertools::Itertools;
+use rustc_hash::FxHashSet;
 
 #[derive(Clone)]
 struct State {
@@ -13,7 +14,7 @@ pub struct DFSSolver {
     height: usize,
     tubes: usize,
     initial_tubes: Vec<u8>,
-    states: HashSet<Vec<u8>>,
+    states: FxHashSet<Vec<u8>>,
     stack: Vec<State>,
 }
 
@@ -23,7 +24,7 @@ impl Solver for DFSSolver {
             height,
             tubes: initial_tubes.len() / height,
             initial_tubes,
-            states: HashSet::new(),
+            states: FxHashSet::default(),
             stack: vec![],
         }
     }
@@ -34,7 +35,8 @@ impl Solver for DFSSolver {
 
     fn get_solution(&self) -> Vec<SolutionStep> {
         let mut solution = vec![];
-        let mut transform: Vec<usize> = (0..self.tubes).collect();
+        let mut transform = (0..self.tubes).collect_vec();
+        let mut new_transform = vec![0; self.tubes];
         for (index, step) in self.stack.iter().enumerate() {
             if index > 0 {
                 solution.push(SolutionStep {
@@ -42,9 +44,10 @@ impl Solver for DFSSolver {
                     to: transform[step.to],
                 });
             }
-            transform = (0..self.tubes)
-                .map(|index| transform[step.transform[index]])
-                .collect();
+            for i in 0..self.tubes {
+                new_transform[i] = transform[step.transform[i]];
+            }
+            std::mem::swap(&mut transform, &mut new_transform);
         }
         solution
     }
@@ -68,7 +71,7 @@ impl DFSSolver {
         let tube_stats = sorted_tubes
             .chunks_exact(self.height)
             .map(|tube| get_tube_stat(tube, self.height))
-            .collect::<Vec<_>>();
+            .collect_vec();
         for i in 0..(self.tubes - 1) {
             if !tube_stats[i].simple || tube_stats[i].color_height == self.height {
                 continue;

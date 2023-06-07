@@ -1,6 +1,8 @@
 use super::utils::{get_transform, get_tube_stat, is_solved, pour, pour_back};
 use super::{SolutionStep, Solver};
-use std::collections::{HashMap, VecDeque};
+use itertools::Itertools;
+use rustc_hash::FxHashMap;
+use std::collections::VecDeque;
 use std::iter;
 use std::rc::Rc;
 
@@ -18,7 +20,7 @@ pub struct BFSSolver {
     height: usize,
     tubes: usize,
     initial_tubes: Vec<u8>,
-    states: HashMap<Rc<Vec<u8>>, Rc<State>>,
+    states: FxHashMap<Rc<Vec<u8>>, Rc<State>>,
     queue: VecDeque<Rc<State>>,
 }
 
@@ -28,7 +30,7 @@ impl Solver for BFSSolver {
             height,
             tubes: initial_tubes.len() / height,
             initial_tubes,
-            states: HashMap::new(),
+            states: FxHashMap::default(),
             queue: VecDeque::new(),
         }
     }
@@ -37,8 +39,7 @@ impl Solver for BFSSolver {
         if self.push_state(&self.initial_tubes.clone(), 0, usize::MAX, usize::MAX, 0) {
             return true;
         }
-        while !self.queue.is_empty() {
-            let state = self.queue.pop_front().unwrap();
+        while let Some(state) = self.queue.pop_front() {
             if self.inner_search(state.as_ref()) {
                 return true;
             }
@@ -47,21 +48,21 @@ impl Solver for BFSSolver {
     }
 
     fn get_solution(&self) -> Vec<SolutionStep> {
-        let colors = self.initial_tubes.iter().filter(|x| **x > 0).count() / self.height;
+        let colors = self.initial_tubes.iter().filter(|&&x| x > 0).count() / self.height;
         let mut state = vec![0; (self.tubes - colors) * self.height];
         for i in 1..=colors {
             state.extend(iter::repeat(i as u8).take(self.height));
         }
         let mut steps = vec![];
+        let mut inverse_transform: Vec<usize> = vec![0; self.tubes];
         loop {
             let step = self.states.get(&state).unwrap();
             steps.push(step);
             if step.depth == 0 {
                 break;
             }
-            let mut inverse_transform = vec![0usize; self.tubes];
-            for (i, x) in step.transform.iter().enumerate() {
-                inverse_transform[*x] = i;
+            for (i, &x) in step.transform.iter().enumerate() {
+                inverse_transform[x] = i;
             }
             let mut new_state = vec![0; self.tubes * self.height];
             for i in 0..self.tubes {
@@ -75,7 +76,8 @@ impl Solver for BFSSolver {
         steps.reverse();
 
         let mut solution = vec![];
-        let mut transform: Vec<usize> = (0..self.tubes).collect();
+        let mut transform = (0..self.tubes).collect_vec();
+        let mut new_transform = vec![0; self.tubes];
         for (index, step) in steps.iter().enumerate() {
             if index > 0 {
                 solution.push(SolutionStep {
@@ -83,9 +85,10 @@ impl Solver for BFSSolver {
                     to: transform[step.to],
                 });
             }
-            transform = (0..self.tubes)
-                .map(|index| transform[step.transform[index]])
-                .collect();
+            for i in 0..self.tubes {
+                new_transform[i] = transform[step.transform[i]];
+            }
+            std::mem::swap(&mut transform, &mut new_transform);
         }
         solution
     }
@@ -124,7 +127,7 @@ impl BFSSolver {
             .tubes
             .chunks_exact(self.height)
             .map(|tube| get_tube_stat(tube, self.height))
-            .collect::<Vec<_>>();
+            .collect_vec();
         for i in 0..(self.tubes - 1) {
             if !tube_stats[i].simple || tube_stats[i].color_height == self.height {
                 continue;

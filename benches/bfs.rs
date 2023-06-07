@@ -1,17 +1,15 @@
-use std::iter;
-
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use itertools::Itertools;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-
 use water_sort_puzzle_solver::*;
 
 fn solve_random(colors: usize, height: usize, empty_tubes: usize) {
-    let mut tubes: Vec<u8> = (0..(colors * height))
+    let mut tubes = (0..(colors * height))
         .map(|x| (x / height + 1) as u8)
-        .collect();
+        .collect_vec();
     tubes.shuffle(&mut thread_rng());
-    tubes.extend(iter::repeat(0).take(empty_tubes * height));
+    tubes.resize((colors + empty_tubes) * height, 0);
     BFSSolver::new(height, tubes).search();
 }
 
