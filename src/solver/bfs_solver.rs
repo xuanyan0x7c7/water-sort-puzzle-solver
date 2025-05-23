@@ -1,10 +1,11 @@
-use super::utils::{get_transform, get_tube_stat, is_solved, pour, pour_back};
-use super::{SolutionStep, Solver};
-use itertools::Itertools;
-use rustc_hash::FxHashMap;
 use std::collections::VecDeque;
 use std::iter;
 use std::rc::Rc;
+
+use rustc_hash::FxHashMap;
+
+use super::utils::*;
+use super::{SolutionStep, Solver};
 
 #[derive(Clone)]
 struct State {
@@ -76,7 +77,7 @@ impl Solver for BFSSolver {
         steps.reverse();
 
         let mut solution = vec![];
-        let mut transform = (0..self.tubes).collect_vec();
+        let mut transform: Vec<usize> = (0..self.tubes).collect();
         let mut new_transform = vec![0; self.tubes];
         for (index, step) in steps.iter().enumerate() {
             if index > 0 {
@@ -123,11 +124,11 @@ impl BFSSolver {
     }
 
     fn inner_search(&mut self, state: &State) -> bool {
-        let tube_stats = state
+        let tube_stats: Vec<TubeStats> = state
             .tubes
             .chunks_exact(self.height)
             .map(|tube| get_tube_stat(tube, self.height))
-            .collect_vec();
+            .collect();
         for i in 0..(self.tubes - 1) {
             if !tube_stats[i].simple || tube_stats[i].color_height == self.height {
                 continue;

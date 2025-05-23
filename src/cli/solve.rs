@@ -1,9 +1,10 @@
-use clap::ArgMatches;
-use itertools::Itertools;
-use rustc_hash::FxHashMap;
 use std::io::stdin;
 use std::process;
 use std::time;
+
+use clap::Args;
+use rustc_hash::FxHashMap;
+
 use water_sort_puzzle_solver::*;
 
 fn solve(solver: &mut impl Solver) {
@@ -18,15 +19,30 @@ fn solve(solver: &mut impl Solver) {
     println!("Time used: {} seconds", now.elapsed().as_secs_f64());
 }
 
-pub fn run_solver(subcommand: &ArgMatches) {
-    let color_count: usize = subcommand.value_of("colors").unwrap().parse().unwrap();
-    let height: usize = subcommand.value_of("height").unwrap().parse().unwrap();
-    let tube_count: usize = subcommand
-        .value_of("tubes")
-        .unwrap_or((color_count + 2).to_string().as_str())
-        .parse()
-        .unwrap();
-    let use_dfs = subcommand.is_present("suboptimal");
+#[derive(Args)]
+pub struct SolverArgs {
+    /// Number of colors
+    #[arg(short, long, value_parser)]
+    pub colors: usize,
+
+    /// Height of each tube
+    #[arg(short = 'H', long, value_parser)]
+    pub height: usize,
+
+    /// Number of tubes (default: colors + 2)
+    #[arg(short, long, value_parser)]
+    pub tubes: Option<usize>,
+
+    /// Use suboptimal solver (DFS)
+    #[arg(long)]
+    pub suboptimal: bool,
+}
+
+pub fn run_solver(subcommand: &SolverArgs) {
+    let color_count: usize = subcommand.colors;
+    let height: usize = subcommand.height;
+    let tube_count: usize = subcommand.tubes.unwrap_or(color_count + 2);
+    let use_dfs = subcommand.suboptimal;
 
     let mut color_list = vec![];
     for _ in 0..tube_count {
@@ -38,7 +54,7 @@ pub fn run_solver(subcommand: &ArgMatches) {
                         .split_ascii_whitespace()
                         .take(height)
                         .map(String::from)
-                        .collect_vec(),
+                        .collect::<Vec<String>>(),
                 );
             }
             Err(error) => {

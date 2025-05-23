@@ -1,7 +1,7 @@
-use super::utils::{get_transform, get_tube_stat, is_solved, pour};
-use super::{SolutionStep, Solver};
-use itertools::Itertools;
 use rustc_hash::FxHashSet;
+
+use super::utils::*;
+use super::{SolutionStep, Solver};
 
 #[derive(Clone)]
 struct State {
@@ -35,7 +35,7 @@ impl Solver for DFSSolver {
 
     fn get_solution(&self) -> Vec<SolutionStep> {
         let mut solution = vec![];
-        let mut transform = (0..self.tubes).collect_vec();
+        let mut transform: Vec<usize> = (0..self.tubes).collect();
         let mut new_transform = vec![0; self.tubes];
         for (index, step) in self.stack.iter().enumerate() {
             if index > 0 {
@@ -68,10 +68,10 @@ impl DFSSolver {
         if is_solved(&sorted_tubes, self.height) {
             return true;
         }
-        let tube_stats = sorted_tubes
+        let tube_stats: Vec<TubeStats> = sorted_tubes
             .chunks_exact(self.height)
             .map(|tube| get_tube_stat(tube, self.height))
-            .collect_vec();
+            .collect();
         for i in 0..(self.tubes - 1) {
             if !tube_stats[i].simple || tube_stats[i].color_height == self.height {
                 continue;
